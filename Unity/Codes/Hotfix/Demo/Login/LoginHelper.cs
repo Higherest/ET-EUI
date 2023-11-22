@@ -2,6 +2,7 @@ using System;
 
 namespace ET
 {
+    [FriendClass(typeof(AccountInfoComponent))]
     public static class LoginHelper
     {
         public static async ETTask<int> Login(Scene zoneScene, string address, string account, string password)
@@ -62,6 +63,8 @@ namespace ET
             }
 
             zoneScene.AddComponent<SessionComponent>().Session = accountSession;
+            zoneScene.GetComponent<AccountInfoComponent>().Token = a2CLgoinAccount.Token;
+            zoneScene.GetComponent<AccountInfoComponent>().AccountId = a2CLgoinAccount.AccountId;
 
             return ErrorCode.ERR_Success;
         }

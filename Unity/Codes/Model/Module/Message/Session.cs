@@ -17,8 +17,8 @@ namespace ET
             this.Tcs = ETTask<IResponse>.Create(true);
         }
     }
-    
-    [FriendClass(typeof(Session))]
+
+    [FriendClass(typeof (Session))]
     public static class SessionSystem
     {
         [ObjectSystem]
@@ -32,33 +32,34 @@ namespace ET
                 self.LastSendTime = timeNow;
 
                 self.requestCallbacks.Clear();
-            
+
                 Log.Info($"session create: zone: {self.DomainZone()} id: {self.Id} {timeNow} ");
             }
         }
-        
+
         [ObjectSystem]
         public class SessionDestroySystem: DestroySystem<Session>
         {
             public override void Destroy(Session self)
             {
                 self.AService.RemoveChannel(self.Id);
-            
+
                 foreach (RpcInfo responseCallback in self.requestCallbacks.Values.ToArray())
                 {
                     responseCallback.Tcs.SetException(new RpcException(self.Error, $"session dispose: {self.Id} {self.RemoteAddress}"));
                 }
 
-                Log.Info($"session dispose: {self.RemoteAddress} id: {self.Id} ErrorCode: {self.Error}, please see ErrorCode.cs! {TimeHelper.ClientNow()}");
-            
+                Log.Info(
+                    $"session dispose: {self.RemoteAddress} id: {self.Id} ErrorCode: {self.Error}, please see ErrorCode.cs! {TimeHelper.ClientNow()}");
+
                 self.requestCallbacks.Clear();
             }
         }
-        
+
         public static void OnRead(this Session self, ushort opcode, IResponse response)
         {
             OpcodeHelper.LogMsg(self.DomainZone(), opcode, response);
-            
+
             if (!self.requestCallbacks.TryGetValue(response.RpcId, out var action))
             {
                 return;
@@ -70,9 +71,10 @@ namespace ET
                 action.Tcs.SetException(new Exception($"Rpc error, request: {action.Request} response: {response}"));
                 return;
             }
+
             action.Tcs.SetResult(response);
         }
-        
+
         public static async ETTask<IResponse> Call(this Session self, IRequest request, ETCancellationToken cancellationToken)
         {
             int rpcId = ++Session.RpcId;
@@ -81,7 +83,7 @@ namespace ET
             request.RpcId = rpcId;
 
             self.Send(request);
-            
+
             void CancelAction()
             {
                 if (!self.requestCallbacks.TryGetValue(rpcId, out RpcInfo action))
@@ -91,7 +93,7 @@ namespace ET
 
                 self.requestCallbacks.Remove(rpcId);
                 Type responseType = OpcodeTypeComponent.Instance.GetResponseType(action.Request.GetType());
-                IResponse response = (IResponse) Activator.CreateInstance(responseType);
+                IResponse response = (IResponse)Activator.CreateInstance(responseType);
                 response.Error = ErrorCore.ERR_Cancel;
                 action.Tcs.SetResult(response);
             }
@@ -106,6 +108,7 @@ namespace ET
             {
                 cancellationToken?.Remove(CancelAction);
             }
+
             return ret;
         }
 
@@ -128,14 +131,14 @@ namespace ET
         {
             self.Send(0, message);
         }
-        
+
         public static void Send(this Session self, long actorId, IMessage message)
         {
             (ushort opcode, MemoryStream stream) = MessageSerializeHelper.MessageToStream(message);
             OpcodeHelper.LogMsg(self.DomainZone(), opcode, message);
             self.Send(actorId, stream);
         }
-        
+
         public static void Send(this Session self, long actorId, MemoryStream memoryStream)
         {
             self.LastSendTime = TimeHelper.ClientNow();
@@ -143,40 +146,21 @@ namespace ET
         }
     }
 
+    [ChildType]
     public sealed class Session: Entity, IAwake<AService>, IDestroy
     {
         public AService AService;
-        
-        public static int RpcId
-        {
-            get;
-            set;
-        }
+
+        public static int RpcId { get; set; }
 
         public readonly Dictionary<int, RpcInfo> requestCallbacks = new Dictionary<int, RpcInfo>();
-        
-        public long LastRecvTime
-        {
-            get;
-            set;
-        }
 
-        public long LastSendTime
-        {
-            get;
-            set;
-        }
+        public long LastRecvTime { get; set; }
 
-        public int Error
-        {
-            get;
-            set;
-        }
+        public long LastSendTime { get; set; }
 
-        public IPEndPoint RemoteAddress
-        {
-            get;
-            set;
-        }
+        public int Error { get; set; }
+
+        public IPEndPoint RemoteAddress { get; set; }
     }
 }
