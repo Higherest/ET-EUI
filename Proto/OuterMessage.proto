@@ -259,3 +259,8 @@ message A2C_LgoinAccount //IResponse
 	string Token = 1;
 	int64 AccountId = 2;
 }
+
+message A2C_Disconnect //IMessage
+{
+	int32 Error = 1;
+}

@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 
 namespace ET
 {
+    //客户端到账号服务器登录请求处理类
     [FriendClass(typeof (Account))]
     public class C2A_LoginAccountHandler: AMRpcHandler<C2A_LoginAccount, A2C_LgoinAccount>
     {
@@ -88,6 +89,28 @@ namespace ET
                         account.accountType = (int)AccountType.General;
                         await DBManagerComponent.Instance.GetZoneDB(session.DomainZone()).Save<Account>(account);
                     }
+
+                    StartSceneConfig startSceneConfig = StartSceneConfigCategory.Instance.GetBySceneName(session.DomainZone(), "LoginCenter");
+                    long loginCenterInstanceId = startSceneConfig.InstanceId;
+                    var loginAccountResponse = (L2A_LoginAccountResponse)await ActorMessageSenderComponent.Instance.Call(loginCenterInstanceId,
+                        new A2L_LoginAccountRequest() { AccountId = account.Id });
+                    if (loginAccountResponse.Error != ErrorCode.ERR_Success)
+                    {
+                        response.Error = loginAccountResponse.Error;
+                        reply();
+                        session?.DisConnect().Coroutine();
+                        account?.Dispose();
+                        return;
+                    }
+
+                    //获取是否有其他玩家已经登录
+                    long accountSessionInstanceId = session.DomainScene().GetComponent<AccountSessionsComponent>().Get(account.Id);
+                    Session otherSession = Game.EventSystem.Get(accountSessionInstanceId) as Session;
+                    //如果有已经登录的玩家，踢下线
+                    otherSession.Send(new A2C_Disconnect() { Error = 0 });
+                    otherSession.DisConnect().Coroutine();
+                    session.DomainScene().GetComponent<AccountSessionsComponent>().Add(account.Id, session.InstanceId);
+                    session.AddComponent<AccountCheckOutTimeComponent, long>(account.Id);
 
                     string token = TimeHelper.ServerNow().ToString() + RandomHelper.RandomNumber(int.MinValue, int.MaxValue).ToString();
                     session.DomainScene().GetComponent<TokenComponent>().Remove(account.Id);

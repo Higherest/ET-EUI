@@ -9,7 +9,8 @@
         Http = 4,
         Location = 5,
         Map = 6,
-        Account = 7,
+        Account = 7, //账号服务器
+        LoginCenter = 8, //登录中心服
 
         // 客户端Model层
         Client = 30,
