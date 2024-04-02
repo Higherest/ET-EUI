@@ -28,7 +28,8 @@ namespace ET
                     self.View.E_PasswordInputField.GetComponent<InputField>().text);
                 if (errorCode != ErrorCode.ERR_Success)
                 {
-                    Log.Error(errorCode.ToString());
+                    LogHelper.ErrorCodeLog(errorCode);
+                    return;
                 }
 
                 self.DomainScene().GetComponent<UIComponent>().HideWindow(WindowID.WindowID_Login);

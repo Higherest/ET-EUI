@@ -34,21 +34,22 @@ namespace ET
                 return;
             }
 
-            if (!Regex.IsMatch(request.AccountName.Trim(), @"^(?=.*[0-9].*)(?=.*[A-Z].*)(?=.*[a-z].*).{6,15}$"))
+            /*if (!Regex.IsMatch(request.AccountName.Trim(), @"^(?=.*[0-9].*)(?=.*[A-Z].*)(?=.*[a-z].*).{6,15}$"))
             {
                 response.Error = ErrorCode.ERR_LoginInfoError;
                 reply();
                 session.DisConnect().Coroutine();
                 return;
-            }
+            }*/
 
-            if (!Regex.IsMatch(request.PassWord.Trim(), @"^(?=.*[0-9].*)(?=.*[A-Z].*)(?=.*[a-z].*).{6,15}$"))
+            //密码先不经过检验。因为被md5加密，规则已经变了
+            /*if (!Regex.IsMatch(request.PassWord.Trim(), @"^[A-Za-z0-9]+$"))
             {
                 response.Error = ErrorCode.ERR_LoginInfoError;
                 reply();
                 session.DisConnect().Coroutine();
                 return;
-            }
+            }*/
 
             using (session.AddComponent<SessionLockingComponent>())
             {
@@ -73,7 +74,7 @@ namespace ET
 
                         if (!account.passWord.Equals(request.PassWord))
                         {
-                            request.Error = ErrorCode.ERR_PassWordError;
+                            response.Error = ErrorCode.ERR_PassWordError;
                             reply();
                             session.DisConnect().Coroutine();
                             account?.Dispose();
@@ -107,8 +108,8 @@ namespace ET
                     long accountSessionInstanceId = session.DomainScene().GetComponent<AccountSessionsComponent>().Get(account.Id);
                     Session otherSession = Game.EventSystem.Get(accountSessionInstanceId) as Session;
                     //如果有已经登录的玩家，踢下线
-                    otherSession.Send(new A2C_Disconnect() { Error = 0 });
-                    otherSession.DisConnect().Coroutine();
+                    otherSession?.Send(new A2C_Disconnect() { Error = 0 });
+                    otherSession?.DisConnect().Coroutine();
                     session.DomainScene().GetComponent<AccountSessionsComponent>().Add(account.Id, session.InstanceId);
                     session.AddComponent<AccountCheckOutTimeComponent, long>(account.Id);
 
